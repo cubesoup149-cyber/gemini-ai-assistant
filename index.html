@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Ultra Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Markdown & Code Highlighting Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Gemini Ultra</h1>
+        </header>
+
+        <div id="chat-container">
+            <div id="messages">
+                <div class="message ai-bubble">
+                    Yo! The system is fully optimized. I support <b>real-time streaming</b>, <b>Markdown</b>, and <b>syntax highlighting</b>. What are we building today?
+                </div>
+            </div>
+            <div id="typing-indicator" class="hidden">Thinking...</div>
+        </div>
+
+        <form id="chat-form">
+            <textarea id="user-input" placeholder="Ask me anything..." rows="1" autocomplete="off" required></textarea>
+            <button type="submit" id="send-btn">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path fill="currentColor" d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                </svg>
+            </button>
+        </form>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
