@@ -2,6 +2,9 @@
 global.rateLimitStore = global.rateLimitStore || {};
 
 exports.handler = async (event) => {
+    // 1. Debug log to confirm deployment
+    console.log("--- SYSTEM START: USING v1/gemini-2.0-flash ---");
+
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
 
     const ip = event.headers['x-forwarded-for'] || 'unknown';
@@ -18,8 +21,8 @@ exports.handler = async (event) => {
         if (!prompt) return { statusCode: 400, body: "Prompt cannot be empty." };
         if (!API_KEY) return { statusCode: 500, body: "Server configuration error: API Key missing." };
 
-        // FIX: Using the stable gemini-1.5-flash model name
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
+        // 2. Updated to v1 and gemini-2.0-flash for max stability
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
 
         const response = await fetch(url, {
             method: "POST",
@@ -27,7 +30,7 @@ exports.handler = async (event) => {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 systemInstruction: {
-                    parts: [{ text: "You are a professional assistant. Provide accurate, markdown-formatted answers." }]
+                    parts: [{ text: "You are an elite developer assistant. Provide structured, accurate, markdown-formatted answers." }]
                 }
             })
         });
@@ -81,8 +84,7 @@ exports.handler = async (event) => {
         };
 
     } catch (err) {
-        console.error("Function Crash:", err.message);
+        console.error("Critical Function Failure:", err.message);
         return { statusCode: 500, body: `Server Crash: ${err.message}` };
     }
 };
-
