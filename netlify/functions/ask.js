@@ -2,15 +2,14 @@
 global.rateLimitStore = global.rateLimitStore || {};
 
 exports.handler = async (event) => {
-    // 1. Debug log to confirm deployment
-    console.log("--- SYSTEM START: USING v1/gemini-2.0-flash ---");
+    console.log("--- FINAL DEPLOY: V1 COMPATIBLE MODE ---");
 
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
 
     const ip = event.headers['x-forwarded-for'] || 'unknown';
     const now = Date.now();
     if (global.rateLimitStore[ip] && now - global.rateLimitStore[ip] < 1000) {
-        return { statusCode: 429, body: "Rate limit exceeded. Slow down." };
+        return { statusCode: 429, body: "Slow down! Rate limit active." };
     }
     global.rateLimitStore[ip] = now;
 
@@ -18,30 +17,30 @@ exports.handler = async (event) => {
         const { prompt } = JSON.parse(event.body);
         const API_KEY = process.env.GEMINI_API_KEY;
 
-        if (!prompt) return { statusCode: 400, body: "Prompt cannot be empty." };
-        if (!API_KEY) return { statusCode: 500, body: "Server configuration error: API Key missing." };
+        if (!prompt) return { statusCode: 400, body: "Prompt is empty." };
+        if (!API_KEY) return { statusCode: 500, body: "API Key missing in Netlify settings." };
 
-        // 2. Updated to v1 and gemini-2.0-flash for max stability
+        // v1 stable endpoint
         const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
 
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: {
-                    parts: [{ text: "You are an elite developer assistant. Provide structured, accurate, markdown-formatted answers." }]
-                }
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        // Combining persona + prompt to bypass 'systemInstruction' field errors
+                        text: `Context: You are a smart AI assistant. Give clear, structured answers using markdown. Use short paragraphs and code blocks where helpful.\n\nUser Question: ${prompt}`
+                    }]
+                }]
             })
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("--- GEMINI API ERROR LOG ---", errorText);
-            return { 
-                statusCode: response.status, 
-                body: `Gemini API Error: ${errorText}` 
-            };
+            console.error("--- API ERROR ---", errorText);
+            return { statusCode: response.status, body: `API Error: ${errorText}` };
         }
 
         const encoder = new TextEncoder();
@@ -64,9 +63,10 @@ exports.handler = async (event) => {
                         if (line.startsWith("data: ")) {
                             try {
                                 const json = JSON.parse(line.substring(6));
+                                // Safety check for nested content structure
                                 const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (text) controller.enqueue(encoder.encode(text));
-                            } catch (e) { /* skip malformed JSON lines */ }
+                            } catch (e) { /* Ignore partial JSON chunks */ }
                         }
                     }
                 }
@@ -84,7 +84,7 @@ exports.handler = async (event) => {
         };
 
     } catch (err) {
-        console.error("Critical Function Failure:", err.message);
+        console.error("Critical Failure:", err.message);
         return { statusCode: 500, body: `Server Crash: ${err.message}` };
     }
 };
