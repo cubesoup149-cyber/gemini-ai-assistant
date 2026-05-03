@@ -2,7 +2,7 @@
 global.rateLimitStore = global.rateLimitStore || {};
 
 exports.handler = async (event) => {
-    console.log("--- FINAL DEPLOY: V1 COMPATIBLE MODE ---");
+    console.log("--- SYSTEM RECOVERY: SWITCHED TO STABLE 1.5 FLASH ---");
 
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
 
@@ -20,8 +20,8 @@ exports.handler = async (event) => {
         if (!prompt) return { statusCode: 400, body: "Prompt is empty." };
         if (!API_KEY) return { statusCode: 500, body: "API Key missing in Netlify settings." };
 
-        // v1 stable endpoint
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
+        // SWITCHED: Using v1beta and gemini-1.5-flash for maximum free-tier availability
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
 
         const response = await fetch(url, {
             method: "POST",
@@ -30,7 +30,6 @@ exports.handler = async (event) => {
                 contents: [{
                     role: "user",
                     parts: [{
-                        // Combining persona + prompt to bypass 'systemInstruction' field errors
                         text: `Context: You are a smart AI assistant. Give clear, structured answers using markdown. Use short paragraphs and code blocks where helpful.\n\nUser Question: ${prompt}`
                     }]
                 }]
@@ -63,10 +62,9 @@ exports.handler = async (event) => {
                         if (line.startsWith("data: ")) {
                             try {
                                 const json = JSON.parse(line.substring(6));
-                                // Safety check for nested content structure
                                 const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (text) controller.enqueue(encoder.encode(text));
-                            } catch (e) { /* Ignore partial JSON chunks */ }
+                            } catch (e) { /* ignore partial JSON */ }
                         }
                     }
                 }
