@@ -10,20 +10,39 @@ window.addEventListener('load', () => {
     setTimeout(() => {
         const splash = document.getElementById('splash-screen');
         const app = document.getElementById('main-app');
-        if (splash) {
-            splash.style.opacity = '0';
-            setTimeout(() => {
-                splash.style.display = 'none';
-                if (app) app.classList.add('visible');
-            }, 500);
-        }
+        if (splash) splash.style.opacity = '0';
+        setTimeout(() => {
+            if (splash) splash.style.display = 'none';
+            if (app) app.classList.add('visible');
+        }, 500);
     }, 1200);
 });
 
 const chatContainer = document.getElementById('chat-container');
 const userInput = document.getElementById('user-input');
 
-// 2. Messaging Engine
+// 2. Typewriter Effect
+function typeWriter(text, element, callback) {
+    let i = 0;
+    const speed = 3; // Characters per frame
+    function step() {
+        if (i <= text.length) {
+            element.innerHTML = marked.parse(text.slice(0, i));
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            element.querySelectorAll('pre code').forEach(el => {
+                if (!el.dataset.highlighted) { hljs.highlightElement(el); el.dataset.highlighted = 'true'; }
+            });
+            i += speed;
+            requestAnimationFrame(step);
+        } else {
+            element.innerHTML = marked.parse(text);
+            if (callback) callback();
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+// 3. Messaging
 async function handleSendMessage() {
     const text = userInput.value.trim();
     if (!text || state.isGenerating) return;
@@ -33,52 +52,36 @@ async function handleSendMessage() {
     userInput.style.height = 'auto';
     
     addMessage(text, 'user');
-    const aiDiv = addMessage('', 'ai');
-    const contentDiv = aiDiv.querySelector('.content');
+    const typingDiv = showTyping();
 
     try {
         const response = await fetch('/.netlify/functions/ask', {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: text })
         });
+        const aiText = await response.text();
+        typingDiv.remove();
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    try {
-                        const json = JSON.parse(line.replace('data: ', ''));
-                        fullText += json.candidates[0].content.parts[0].text;
-                        contentDiv.innerHTML = marked.parse(fullText);
-                        contentDiv.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    } catch(e) {}
+        const aiDiv = addMessage('', 'ai');
+        const contentDiv = aiDiv.querySelector('.content');
+        
+        typeWriter(aiText, contentDiv, () => {
+            state.isGenerating = false;
+            if (!state.isTempMode) {
+                if (!state.activeChatId) {
+                    state.activeChatId = 'chat_' + Date.now();
+                    state.chats.unshift({ id: state.activeChatId, title: text.substring(0,25), messages: [], timestamp: Date.now() });
                 }
+                const chat = state.chats.find(c => c.id === state.activeChatId);
+                chat.messages.push({ role: 'user', text }, { role: 'ai', text: aiText });
+                localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
+                renderSidebar();
             }
-        }
-
-        if (!state.isTempMode) {
-            if (!state.activeChatId) {
-                state.activeChatId = 'chat_' + Date.now();
-                state.chats.unshift({ id: state.activeChatId, title: text.substring(0,25), messages: [], timestamp: Date.now() });
-            }
-            const chat = state.chats.find(c => c.id === state.activeChatId);
-            chat.messages.push({ role: 'user', text }, { role: 'ai', text: fullText });
-            localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
-            renderSidebar();
-        }
+        });
     } catch (err) {
-        contentDiv.innerText = "Connection lost.";
-    } finally {
+        if(typingDiv) typingDiv.remove();
+        addMessage("Connection error. Try again.", 'ai');
         state.isGenerating = false;
     }
 }
@@ -92,10 +95,19 @@ function addMessage(text, role) {
     return div;
 }
 
+function showTyping() {
+    const div = document.createElement('div');
+    div.className = 'msg ai-msg';
+    div.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return div;
+}
+
 function updateUI() {
     chatContainer.innerHTML = '';
     if (state.isTempMode) {
-        addSystemNotice("Temporary Chat: History not saved.");
+        addSystemNotice("This chat won't appear in your chat history and won't be used to train our models. For safety reasons, we may keep a copy of this chat for up to 30 days.");
     } else {
         const chat = state.chats.find(c => c.id === state.activeChatId);
         if (chat) chat.messages.forEach(m => addMessage(m.text, m.role === 'user' ? 'user' : 'ai'));
@@ -118,7 +130,7 @@ function renderSidebar() {
         const item = document.createElement('div');
         item.className = `chat-item ${chat.id === state.activeChatId ? 'active' : ''}`;
         item.innerText = chat.title;
-        item.onclick = () => { state.activeChatId = chat.id; state.isTempMode = false; updateUI(); toggleSidebar(); };
+        item.onclick = () => { if(state.isGenerating) return; state.activeChatId = chat.id; state.isTempMode = false; updateUI(); toggleSidebar(); };
         list.appendChild(item);
     });
 }
@@ -133,15 +145,12 @@ document.getElementById('menu-toggle').onclick = toggleSidebar;
 document.getElementById('mobile-overlay').onclick = toggleSidebar;
 document.getElementById('dots-btn').onclick = (e) => { e.stopPropagation(); document.getElementById('context-menu').classList.toggle('show'); };
 document.addEventListener('click', () => document.getElementById('context-menu').classList.remove('show'));
-
-document.getElementById('sidebar-new-chat').onclick = () => { state.isTempMode = false; state.activeChatId = null; updateUI(); toggleSidebar(); };
-document.getElementById('menu-new-chat').onclick = () => { state.isTempMode = false; state.activeChatId = null; updateUI(); };
-document.getElementById('temp-toggle-btn').onclick = () => { state.isTempMode = !state.isTempMode; state.activeChatId = null; updateUI(); };
+document.getElementById('sidebar-new-chat').onclick = () => { if(state.isGenerating) return; state.isTempMode = false; state.activeChatId = null; updateUI(); toggleSidebar(); };
+document.getElementById('menu-new-chat').onclick = () => { if(state.isGenerating) return; state.isTempMode = false; state.activeChatId = null; updateUI(); };
+document.getElementById('temp-toggle-btn').onclick = () => { if(state.isGenerating) return; state.isTempMode = !state.isTempMode; state.activeChatId = null; updateUI(); };
 document.getElementById('delete-chat-btn').onclick = () => { state.chats = state.chats.filter(c => c.id !== state.activeChatId); state.activeChatId = null; localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats)); updateUI(); };
-
 document.getElementById('send-btn').onclick = handleSendMessage;
 userInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; };
 userInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } };
 
 updateUI();
-    
