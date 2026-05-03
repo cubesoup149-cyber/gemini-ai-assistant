@@ -2,7 +2,7 @@
 global.rateLimitStore = global.rateLimitStore || {};
 
 exports.handler = async (event) => {
-    console.log("--- SYSTEM RECOVERY: SWITCHED TO STABLE 1.5 FLASH ---");
+    console.log("--- SYSTEM REBOOT: V1 STABLE + 1.5 FLASH ---");
 
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
 
@@ -18,10 +18,10 @@ exports.handler = async (event) => {
         const API_KEY = process.env.GEMINI_API_KEY;
 
         if (!prompt) return { statusCode: 400, body: "Prompt is empty." };
-        if (!API_KEY) return { statusCode: 500, body: "API Key missing in Netlify settings." };
+        if (!API_KEY) return { statusCode: 500, body: "API Key missing." };
 
-        // SWITCHED: Using v1beta and gemini-1.5-flash for maximum free-tier availability
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
+        // FIX: Using the v1 (Stable) endpoint with the standard 1.5-flash model
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
 
         const response = await fetch(url, {
             method: "POST",
@@ -30,7 +30,8 @@ exports.handler = async (event) => {
                 contents: [{
                     role: "user",
                     parts: [{
-                        text: `Context: You are a smart AI assistant. Give clear, structured answers using markdown. Use short paragraphs and code blocks where helpful.\n\nUser Question: ${prompt}`
+                        // We put the instruction directly in the prompt to ensure v1 compatibility
+                        text: `Context: You are a smart AI assistant. Give clear, structured answers using markdown. \n\nUser Question: ${prompt}`
                     }]
                 }]
             })
@@ -64,7 +65,7 @@ exports.handler = async (event) => {
                                 const json = JSON.parse(line.substring(6));
                                 const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (text) controller.enqueue(encoder.encode(text));
-                            } catch (e) { /* ignore partial JSON */ }
+                            } catch (e) { /* skip partials */ }
                         }
                     }
                 }
