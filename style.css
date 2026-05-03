@@ -8,11 +8,12 @@
     --sidebar-width: 280px;
 }
 
-/* Global Reset: Prevent body scrolling entirely */
+/* Global Reset */
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 html, body {
     height: 100dvh; width: 100vw;
     background-color: #000;
+    color: var(--text-main); /* Ensure base color is white */
     overflow: hidden;
     position: fixed;
 }
@@ -25,30 +26,26 @@ html, body {
 }
 .splash-logo { width: 100px; }
 
-/* --- Sidebar: The Fix --- */
+/* --- Sidebar --- */
 .sidebar {
     position: fixed; left: 0; top: 0;
     width: var(--sidebar-width); height: 100dvh;
     background: var(--bg-sidebar);
     z-index: 2000;
     display: flex;
-    flex-direction: column; /* Stack header and list */
+    flex-direction: column;
     border-right: 1px solid var(--border);
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sidebar.open { transform: translateX(0); }
-
 .sidebar-header { padding: 1.5rem 1rem; flex-shrink: 0; }
 .btn-new-chat {
     width: 100%; padding: 12px; background: var(--bg-surface);
     border: 1px solid var(--border); color: white; border-radius: 8px; cursor: pointer;
 }
-
 .chat-list {
-    flex: 1; /* Take all remaining height */
-    overflow-y: auto; /* Enable scrolling */
-    -webkit-overflow-scrolling: touch;
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 0 10px 20px 10px;
 }
 .chat-item {
@@ -107,15 +104,20 @@ textarea { flex: 1; background: none; border: none; color: white; padding: 10px;
 
 .icon-btn { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; padding: 10px; }
 
-/* Messages */
+/* --- FIXED AI MESSAGE COLORS --- */
 .msg { max-width: 85%; animation: slideUp 0.3s ease-out forwards; }
-.user-msg { align-self: flex-end; background: var(--bg-surface); padding: 10px 15px; border-radius: 18px; }
+.user-msg { align-self: flex-end; background: var(--bg-surface); padding: 10px 15px; border-radius: 18px; color: #fff; }
+
 .ai-msg { align-self: flex-start; width: 100%; }
+.ai-msg .content { color: var(--text-main); }
+/* This ensures all markdown elements like paragraphs and lists stay white */
+.ai-msg .content * { color: var(--text-main) !important; }
+
 .system-msg { align-self: center; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px; }
 
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Typing indicator dots */
+/* Typing indicator */
 .typing-dots { display: flex; gap: 4px; padding: 10px 0; align-items: center; }
 .dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; animation: pulseDot 1.4s infinite; }
 .dot:nth-child(2) { animation-delay: 0.2s; }
