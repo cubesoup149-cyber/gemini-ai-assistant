@@ -3,7 +3,7 @@
     --bg-sidebar: #0d0d0d;
     --bg-surface: #212121;
     --border: #333333;
-    --text-main: #ececec;
+    --text-main: #ffffff; /* Switched to pure white for maximum contrast */
     --text-muted: #8e8e93;
     --sidebar-width: 280px;
 }
@@ -13,7 +13,7 @@
 html, body {
     height: 100dvh; width: 100vw;
     background-color: #000;
-    color: var(--text-main); /* Ensure base color is white */
+    color: #ffffff; 
     overflow: hidden;
     position: fixed;
 }
@@ -104,14 +104,22 @@ textarea { flex: 1; background: none; border: none; color: white; padding: 10px;
 
 .icon-btn { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; padding: 10px; }
 
-/* --- FIXED AI MESSAGE COLORS --- */
-.msg { max-width: 85%; animation: slideUp 0.3s ease-out forwards; }
-.user-msg { align-self: flex-end; background: var(--bg-surface); padding: 10px 15px; border-radius: 18px; color: #fff; }
+/* --- THE TEXT COLOR FIX --- */
+.msg { max-width: 85%; animation: slideUp 0.3s ease-out forwards; color: #ffffff !important; }
+.user-msg { align-self: flex-end; background: var(--bg-surface); padding: 10px 15px; border-radius: 18px; color: #ffffff !important; }
 
 .ai-msg { align-self: flex-start; width: 100%; }
-.ai-msg .content { color: var(--text-main); }
-/* This ensures all markdown elements like paragraphs and lists stay white */
-.ai-msg .content * { color: var(--text-main) !important; }
+.ai-msg .content { color: #ffffff !important; }
+
+/* This "deep selector" ensures every paragraph, list, and span inside AI messages is white */
+.ai-msg .content, 
+.ai-msg .content p, 
+.ai-msg .content span, 
+.ai-msg .content li, 
+.ai-msg .content ol, 
+.ai-msg .content ul { 
+    color: #ffffff !important; 
+}
 
 .system-msg { align-self: center; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px; }
 
@@ -120,6 +128,4 @@ textarea { flex: 1; background: none; border: none; color: white; padding: 10px;
 /* Typing indicator */
 .typing-dots { display: flex; gap: 4px; padding: 10px 0; align-items: center; }
 .dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; animation: pulseDot 1.4s infinite; }
-.dot:nth-child(2) { animation-delay: 0.2s; }
-.dot:nth-child(3) { animation-delay: 0.4s; }
 @keyframes pulseDot { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
