@@ -2,122 +2,115 @@
     --bg-app: #171717;
     --bg-sidebar: #0d0d0d;
     --bg-surface: #212121;
-    --bg-user-bubble: #2f2f2f;
     --border: #333333;
     --text-main: #ececec;
     --text-muted: #8e8e93;
-    --danger: #ff4d4d;
-    --sidebar-width: 260px;
+    --sidebar-width: 280px;
 }
 
-/* --- Splash Screen --- */
-.splash-screen {
-    position: fixed; inset: 0; background: #000;
-    display: flex; align-items: center; justify-content: center;
-    z-index: 9999; transition: opacity 0.6s ease-in-out, visibility 0.6s;
-}
-.splash-logo {
-    width: 120px; height: auto; opacity: 0; transform: scale(0.95);
-    animation: logoEntry 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards, logoOrbit 3s ease-in-out infinite alternate;
-}
-@keyframes logoEntry { 0% { opacity: 0; transform: scale(0.95) rotate(-5deg); } 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
-@keyframes logoOrbit { 0% { transform: scale(1) rotate(0deg); } 100% { transform: scale(1.03) rotate(3deg); } }
-
-.app-fade { opacity: 0; transition: opacity 0.8s ease-in-out; }
-.app-visible { opacity: 1; }
-
+/* Global Reset: Prevent body scrolling entirely */
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-body { background-color: var(--bg-app); color: var(--text-main); height: 100dvh; display: flex; overflow: hidden; }
-
-/* --- Sidebar --- */
-.sidebar { width: var(--sidebar-width); background: var(--bg-sidebar); height: 100%; display: flex; flex-direction: column; border-right: 1px solid var(--border); transition: transform 0.3s ease; z-index: 1000; }
-.sidebar-header { padding: 1rem; }
-.btn-new-chat { background: var(--bg-surface); border: 1px solid var(--border); color: white; width: 100%; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-weight: 500; }
-.chat-list { flex: 1; overflow-y: auto; padding: 10px; }
-.chat-item { padding: 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; transition: background 0.2s; }
-.chat-item:hover, .chat-item.active { background: #262626; color: white; }
-
-/* --- Navbar & Branded Logo --- */
-.navbar { 
-    height: 64px; /* Increased slightly for logo comfort */
-    padding: 0 1rem; 
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between; 
-    background: var(--bg-app); 
-    border-bottom: 1px solid var(--border); 
-    position: sticky; 
-    top: 0; 
-    z-index: 100; 
+html, body {
+    height: 100dvh; width: 100vw;
+    background-color: #000;
+    overflow: hidden;
+    position: fixed;
 }
 
-.nav-brand {
-    position: absolute; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
+/* --- Splash --- */
+.splash-screen {
+    position: fixed; inset: 0; background: #000; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.5s ease;
+}
+.splash-logo { width: 100px; }
+
+/* --- Sidebar: The Fix --- */
+.sidebar {
+    position: fixed; left: 0; top: 0;
+    width: var(--sidebar-width); height: 100dvh;
+    background: var(--bg-sidebar);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column; /* Stack header and list */
+    border-right: 1px solid var(--border);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar.open { transform: translateX(0); }
+
+.sidebar-header { padding: 1.5rem 1rem; flex-shrink: 0; }
+.btn-new-chat {
+    width: 100%; padding: 12px; background: var(--bg-surface);
+    border: 1px solid var(--border); color: white; border-radius: 8px; cursor: pointer;
 }
 
-.header-logo {
-    height: 42px; /* Increased for better readability */
-    width: auto;
-    display: block;
-    opacity: 0;
-    cursor: pointer;
-    transition: transform 0.2s ease-out, opacity 0.5s ease-out;
-    animation: headerLogoFade 0.5s ease-out 1.6s forwards;
+.chat-list {
+    flex: 1; /* Take all remaining height */
+    overflow-y: auto; /* Enable scrolling */
+    -webkit-overflow-scrolling: touch;
+    padding: 0 10px 20px 10px;
+}
+.chat-item {
+    padding: 12px; margin-bottom: 4px; border-radius: 8px;
+    color: var(--text-muted); cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-item:hover, .chat-item.active { background: #2c2c2c; color: white; }
+
+/* --- Main App Layout --- */
+.app-shell {
+    display: flex; flex-direction: column;
+    height: 100dvh; width: 100%;
+    background: var(--bg-app);
+    opacity: 0; transition: opacity 0.5s ease;
+}
+.app-shell.visible { opacity: 1; }
+
+.navbar {
+    height: 60px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px; border-bottom: 1px solid var(--border);
+    position: relative; z-index: 100;
+}
+.nav-brand { position: absolute; left: 50%; transform: translateX(-50%); }
+.header-logo { height: 32px; }
+
+.chat-viewport {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-direction: column;
+    padding: 1rem; gap: 1.5rem;
 }
 
-.header-logo:hover {
-    transform: scale(1.02);
-    opacity: 0.9;
+.input-panel { flex-shrink: 0; padding: 10px 15px 30px 15px; }
+.input-box {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 24px; display: flex; align-items: flex-end; padding: 5px 12px;
 }
+textarea { flex: 1; background: none; border: none; color: white; padding: 10px; font-size: 16px; outline: none; resize: none; max-height: 160px; }
+#send-btn { background: white; color: black; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; margin-bottom: 5px; }
 
-@keyframes headerLogoFade {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+/* --- UI Layers --- */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1500; }
+.overlay.active { display: block; }
+
+.context-menu {
+    position: absolute; right: 10px; top: 60px;
+    background: #2a2a2a; border-radius: 12px; width: 210px; padding: 5px;
+    visibility: hidden; opacity: 0; transform: translateY(-10px);
+    transition: 0.2s; z-index: 3000; border: 1px solid var(--border);
 }
+.context-menu.show { visibility: visible; opacity: 1; transform: translateY(0); }
+.context-menu button { display: block; width: 100%; padding: 12px; background: none; border: none; color: white; text-align: left; border-radius: 8px; cursor: pointer; }
+.context-menu .delete { color: #ff4d4d; }
+.menu-divider { height: 1px; background: var(--border); margin: 5px 0; }
 
-/* --- Responsive Scaling --- */
-@media (max-width: 768px) {
-    .navbar { height: 60px; }
-    .header-logo { height: 36px; }
-}
+.icon-btn { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; padding: 10px; }
 
-/* --- Context Menu & Icons --- */
-.icon-btn { background: none !important; border: none !important; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; transition: color 0.2s; -webkit-tap-highlight-color: transparent; }
-.icon-btn:hover { color: var(--text-main); }
-.menu-wrapper { position: relative; }
-.context-menu { position: absolute; right: 0; top: 52px; background: #2a2a2a; border: 1px solid var(--border); border-radius: 12px; width: 210px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1001; opacity: 0; visibility: hidden; transform: scale(0.95) translateY(-10px); transition: opacity 180ms ease-in, transform 180ms ease-in, visibility 180ms; }
-.context-menu.show { opacity: 1; visibility: visible; transform: scale(1) translateY(0); transition: opacity 200ms ease-out, transform 200ms ease-out; }
-.context-menu button { display: block; width: 100%; padding: 10px 12px; background: none; border: none; color: white; text-align: left; cursor: pointer; font-size: 0.85rem; border-radius: 6px; }
-.context-menu button:hover { background: #383838; }
-.context-menu .delete { color: var(--danger); }
-.menu-divider { height: 1px; background: var(--border); margin: 6px 0; }
+/* Messages */
+.msg { max-width: 85%; animation: slideUp 0.3s ease-out forwards; }
+.user-msg { align-self: flex-end; background: var(--bg-surface); padding: 10px 15px; border-radius: 18px; }
+.ai-msg { align-self: flex-start; width: 100%; }
+.system-msg { align-self: center; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px; }
 
-/* --- Chat Elements --- */
-.system-msg { display: flex; justify-content: center; width: 100%; padding: 1rem 0; margin-bottom: 1rem; }
-.system-msg .notice-content { max-width: 85%; text-align: center; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; background: rgba(255, 255, 255, 0.03); padding: 12px 18px; border-radius: 12px; }
-
-.app-shell { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
-.chat-viewport { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; scroll-behavior: smooth; }
-.msg { display: flex; width: 100%; margin-bottom: 2rem; }
-.user-msg { justify-content: flex-end; }
-.user-msg .content { background: var(--bg-user-bubble); padding: 0.8rem 1.2rem; border-radius: 20px; max-width: 85%; }
-.ai-msg .content { width: 100%; padding: 0.5rem 0; font-size: 1rem; }
-
-.input-panel { padding: 1rem 1rem 2.5rem 1rem; }
-.input-container { max-width: 760px; margin: 0 auto; }
-.input-box { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 24px; display: flex; align-items: flex-end; padding: 6px 12px; }
-textarea { flex: 1; background: none; border: none; color: white; font-size: 1rem; padding: 10px; outline: none; resize: none; max-height: 200px; line-height: 1.5; }
-#send-btn { background: white; color: black; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-bottom: 6px; flex-shrink: 0; }
-
-@media (max-width: 768px) {
-    .sidebar { position: fixed; left: 0; transform: translateX(-100%); }
-    .sidebar.open { transform: translateX(0); }
-    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; }
-    .overlay.active { display: block; }
-}
-.hidden { display: none !important; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
