@@ -22,7 +22,7 @@ const userInput = document.getElementById('user-input');
 
 function typeWriter(text, element, callback) {
     let i = 0;
-    const speed = 3; 
+    const speed = 4; // Faster typing for better UX
     function step() {
         if (i <= text.length) {
             element.innerHTML = marked.parse(text.slice(0, i));
