@@ -1,90 +1,57 @@
 // netlify/functions/ask.js
-global.rateLimitStore = global.rateLimitStore || {};
-
 exports.handler = async (event) => {
-    console.log("--- SYSTEM UPDATE: SWITCHED TO GEMINI 2.5 FLASH ---");
-
+    // 1. Basic Setup
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
-
-    const ip = event.headers['x-forwarded-for'] || 'unknown';
-    const now = Date.now();
-    if (global.rateLimitStore[ip] && now - global.rateLimitStore[ip] < 1000) {
-        return { statusCode: 429, body: "Slow down! Rate limit active." };
-    }
-    global.rateLimitStore[ip] = now;
-
+    
     try {
         const { prompt } = JSON.parse(event.body);
         const API_KEY = process.env.GEMINI_API_KEY;
 
         if (!prompt) return { statusCode: 400, body: "Prompt is empty." };
-        if (!API_KEY) return { statusCode: 500, body: "API Key missing in Netlify settings." };
+        if (!API_KEY) return { statusCode: 500, body: "API Key missing in Netlify." };
 
-        // UPDATED: Using the stable v1 endpoint and the 2.5 Flash model
-        // This model is the current 2026 standard for high-speed free-tier apps.
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
+        // 2. Use the 2026 Stable Model (Gemini 2.5 Flash)
+        // Note: 1.5 is retired, and 2.0 is in maintenance. 2.5 is the current workhorse.
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 contents: [{
-                    role: "user",
                     parts: [{
-                        // Using 'Context' prefix to ensure compatibility with v1 stable schema
-                        text: `Context: You are a smart AI assistant. Give clear, structured answers using markdown. Use short paragraphs and code blocks where helpful.\n\nUser Question: ${prompt}`
+                        text: `You are a helpful AI. Answer in clean Markdown.\n\nUser: ${prompt}`
                     }]
                 }]
             })
         });
 
+        const data = await response.json();
+
+        // 3. Check for API Errors (like Quota or Key issues)
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error("--- API ERROR ---", errorText);
-            return { statusCode: response.status, body: `API Error: ${errorText}` };
+            console.error("Gemini API Error:", data);
+            return { 
+                statusCode: response.status, 
+                body: JSON.stringify({ error: data.error?.message || "API Error" }) 
+            };
         }
 
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder();
+        // 4. Extract the text
+        const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from AI.";
 
-        const stream = new ReadableStream({
-            async start(controller) {
-                const reader = response.body.getReader();
-                let buffer = "";
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split("\n");
-                    buffer = lines.pop();
-
-                    for (const line of lines) {
-                        if (line.startsWith("data: ")) {
-                            try {
-                                const json = JSON.parse(line.substring(6));
-                                const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-                                if (text) controller.enqueue(encoder.encode(text));
-                            } catch (e) { /* skip partial JSON */ }
-                        }
-                    }
-                }
-                controller.close();
-            }
-        });
-
+        // 5. THE FIX: Return a STRING, not an object.
         return {
             statusCode: 200,
-            headers: {
-                "Content-Type": "text/plain; charset=utf-8",
-                "Transfer-Encoding": "chunked"
-            },
-            body: stream
+            headers: { "Content-Type": "text/plain" },
+            body: aiResponse 
         };
 
     } catch (err) {
-        console.error("Critical Failure:", err.message);
-        return { statusCode: 500, body: `Server Crash: ${err.message}` };
+        console.error("System Crash:", err.message);
+        return { 
+            statusCode: 500, 
+            body: "System Error: " + err.message 
+        };
     }
 };
