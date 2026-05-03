@@ -2,17 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valate | AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Valatea | AI</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="splash-screen" class="splash-screen">
-        <div class="logo-container">
-            <img src="valate.png" alt="Valate Logo" class="splash-logo">
-        </div>
+        <img src="valate.png" alt="Logo" class="splash-logo">
     </div>
 
     <div id="mobile-overlay" class="overlay"></div>
@@ -24,32 +22,19 @@
         <div id="chat-list" class="chat-list"></div>
     </aside>
 
-    <div id="main-app" class="app-shell app-fade">
+    <div id="main-app" class="app-shell">
         <header class="navbar">
-            <button id="menu-toggle" class="icon-btn" aria-label="Open Sidebar">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
-
+            <button id="menu-toggle" class="icon-btn">☰</button>
             <div class="nav-brand">
-                <img src="valatetext.png" alt="Valate" class="header-logo">
+                <img src="valatetext.png" alt="Valatea" class="header-logo">
             </div>
-
             <div class="menu-wrapper">
-                <button id="dots-btn" class="icon-btn" aria-label="Settings">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle>
-                    </svg>
-                </button>
+                <button id="dots-btn" class="icon-btn">⋮</button>
                 <div id="context-menu" class="context-menu">
-                    <button onclick="handleNewChatClick()">+ New Chat</button>
-                    <button onclick="toggleTempMode()" id="temp-toggle-btn">Temporary Chat</button>
+                    <button id="menu-new-chat">+ New Chat</button>
+                    <button id="temp-toggle-btn">Temporary Chat</button>
                     <div class="menu-divider"></div>
-                    <button onclick="renameCurrentChat()">Rename</button>
-                    <button onclick="shareCurrentChat()">Share</button>
-                    <button onclick="togglePinCurrentChat()" id="pin-text">Pin Chat</button>
-                    <button onclick="deleteCurrentChat()" class="delete">Delete</button>
+                    <button id="delete-chat-btn" class="delete">Delete Chat</button>
                 </div>
             </div>
         </header>
@@ -59,12 +44,8 @@
         <footer class="input-panel">
             <div class="input-container">
                 <div class="input-box">
-                    <textarea id="user-input" placeholder="Message Valate..." rows="1"></textarea>
-                    <button id="send-btn" title="Send message">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 19V5M12 5L5 12M12 5L19 12"/>
-                        </svg>
-                    </button>
+                    <textarea id="user-input" placeholder="Message Valatea..." rows="1"></textarea>
+                    <button id="send-btn">↑</button>
                 </div>
             </div>
         </footer>
