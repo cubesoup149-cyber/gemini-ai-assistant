@@ -5,7 +5,6 @@ let state = {
     isGenerating: false
 };
 
-// 1. Splash Logic
 window.addEventListener('load', () => {
     setTimeout(() => {
         const splash = document.getElementById('splash-screen');
@@ -21,10 +20,9 @@ window.addEventListener('load', () => {
 const chatContainer = document.getElementById('chat-container');
 const userInput = document.getElementById('user-input');
 
-// 2. Typewriter Effect
 function typeWriter(text, element, callback) {
     let i = 0;
-    const speed = 3; // Characters per frame
+    const speed = 3; 
     function step() {
         if (i <= text.length) {
             element.innerHTML = marked.parse(text.slice(0, i));
@@ -42,7 +40,6 @@ function typeWriter(text, element, callback) {
     requestAnimationFrame(step);
 }
 
-// 3. Messaging
 async function handleSendMessage() {
     const text = userInput.value.trim();
     if (!text || state.isGenerating) return;
@@ -98,7 +95,7 @@ function addMessage(text, role) {
 function showTyping() {
     const div = document.createElement('div');
     div.className = 'msg ai-msg';
-    div.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+    div.innerHTML = `<div class="content"><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
     chatContainer.appendChild(div);
     chatContainer.scrollTop = chatContainer.scrollHeight;
     return div;
@@ -140,7 +137,6 @@ function toggleSidebar() {
     document.getElementById('mobile-overlay').classList.toggle('active');
 }
 
-// Listeners
 document.getElementById('menu-toggle').onclick = toggleSidebar;
 document.getElementById('mobile-overlay').onclick = toggleSidebar;
 document.getElementById('dots-btn').onclick = (e) => { e.stopPropagation(); document.getElementById('context-menu').classList.toggle('show'); };
