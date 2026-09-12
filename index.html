@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
     <title>Valate | AI</title>  
     <link rel="icon" type="image/png" href="favicon.png">  
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">  
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">  
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">  
     <link rel="stylesheet" href="style.css">  
 </head>  
@@ -14,8 +14,9 @@
         <img src="valate.png" alt="Logo" class="splash-logo">  
     </div>  
 
-    <!-- Auth Screen (shown when no user is signed in) -->
+    <!-- Auth Screen -->
     <div id="auth-screen" class="auth-screen">
+        <div class="auth-glow"></div>
         <div class="auth-card">
             <img src="valatetext.png" alt="Valate" class="auth-logo">
             <h1 id="auth-title">Welcome back</h1>
@@ -32,7 +33,7 @@
             <div class="auth-divider"><span>or</span></div>
 
             <button id="google-signin-btn" class="auth-btn-google" type="button">
-                <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.6 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.9 19 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 16.3 3 9.6 7.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-5l-6.5-5.5C29.6 36.1 27 37 24 37c-5.4 0-9.9-3.4-11.5-8.1l-6.6 5.1C9.5 40.5 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.9 2.6-2.7 4.8-5.1 6.3l6.5 5.5C39.9 37.6 43 31.5 43 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+                <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.6 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.9 19 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 16.3 3 9.6 7.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-5l-6.5-5.5C29.6 36.1 27 37 24 37c-5.4 0-9.9-3.4-11.5-8.1l-6.6 5.1C9.5 40.5 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.9 2.6-2.7 4.8-5.1 6.3l6.5 5.5C39.9 37.6 43 31.5 43 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
                 Continue with Google
             </button>
 
@@ -43,11 +44,31 @@
         </div>
     </div>
 
+    <!-- Memory Modal -->
+    <div id="memory-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>🧠 Memory</h2>
+                <button id="memory-close-btn" class="icon-btn">✕</button>
+            </div>
+            <p class="modal-subtitle">Valate remembers these across every chat. Say "remember that..." anytime, or add one manually.</p>
+            <div class="memory-add-row">
+                <input type="text" id="memory-input" placeholder="Add a memory..." class="auth-input">
+                <button id="memory-add-btn" class="auth-btn-primary memory-add-btn">Add</button>
+            </div>
+            <ul id="memory-list" class="memory-list"></ul>
+            <p id="memory-empty" class="memory-empty">No memories yet.</p>
+        </div>
+    </div>
+
     <div id="mobile-overlay" class="overlay"></div>  
   
     <aside id="sidebar" class="sidebar">  
         <div class="sidebar-header">  
-            <button id="sidebar-new-chat" class="btn-new-chat">+ New Chat</button>  
+            <button id="sidebar-new-chat" class="btn-new-chat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                New Chat
+            </button>  
         </div>  
         <div id="chat-list" class="chat-list"></div>  
         <div class="sidebar-footer">
@@ -66,6 +87,7 @@
                 <div id="context-menu" class="context-menu">  
                     <button id="menu-new-chat">New Chat</button>  
                     <button id="temp-toggle-btn">Temporary Chat</button>  
+                    <button id="memory-menu-btn">🧠 Memory</button>
                     <div class="menu-divider"></div>  
                     <div class="menu-section-label">Model</div>  
                     <button id="model-gemini-btn" class="model-option">Gemini</button>  
@@ -84,7 +106,9 @@
             <div class="input-container">  
                 <div class="input-box">  
                     <textarea id="user-input" placeholder="Message Valate..." rows="1"></textarea>  
-                    <button id="send-btn">↑</button>  
+                    <button id="send-btn" title="Send">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                    </button>  
                 </div>  
             </div>  
         </footer>  
