@@ -1,6 +1,20 @@
 const DEFAULT_MODEL = 'gemini'; // 'gemini' | 'claude'
 const MAX_HISTORY_MESSAGES = 20; // ~10 back-and-forth turns — keeps context relevant + cheap
 
+// --- Markdown rendering setup ---
+// GFM enables tables/strikethrough/etc.; breaks makes single newlines act like <br>
+// so AI responses don't collapse into one dense paragraph.
+const mdRenderer = new marked.Renderer();
+mdRenderer.link = function (href, title, text) {
+    const safeTitle = title ? ` title="${title}"` : '';
+    return `<a href="${href}"${safeTitle} target="_blank" rel="noopener noreferrer">${text}</a>`;
+};
+marked.setOptions({
+    renderer: mdRenderer,
+    gfm: true,
+    breaks: true
+});
+
 let state = {
     chats: JSON.parse(localStorage.getItem('VALATEA_CHATS')) || [],
     activeChatId: null,
@@ -40,6 +54,9 @@ function typeWriter(text, element, callback) {
             requestAnimationFrame(step);
         } else {
             element.innerHTML = marked.parse(text);
+            element.querySelectorAll('pre code').forEach(el => {
+                if (!el.dataset.highlighted) { hljs.highlightElement(el); el.dataset.highlighted = 'true'; }
+            });
             if (callback) callback();
         }
     }
@@ -168,6 +185,11 @@ function addMessage(text, role) {
     div.innerHTML = `<div class="content">${role === 'ai' && text ? marked.parse(text) : text}</div>`;
     chatContainer.appendChild(div);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    if (role === 'ai' && text) {
+        div.querySelectorAll('pre code').forEach(el => {
+            if (!el.dataset.highlighted) { hljs.highlightElement(el); el.dataset.highlighted = 'true'; }
+        });
+    }
     return div;
 }
 
