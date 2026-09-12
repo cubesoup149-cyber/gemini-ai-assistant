@@ -1,12 +1,15 @@
+const DEFAULT_MODEL = 'gemini'; // 'gemini' | 'claude'
+const MAX_HISTORY_MESSAGES = 20; // ~10 back-and-forth turns — keeps context relevant + cheap
+
 let state = {
     chats: JSON.parse(localStorage.getItem('VALATEA_CHATS')) || [],
     activeChatId: null,
     isTempMode: false,
     isGenerating: false,
-    tempMessages: [] // in-memory only conversation history for Temporary Chat
+    tempMessages: [],       // in-memory only conversation history for Temporary Chat
+    tempModel: DEFAULT_MODEL, // in-memory only model choice for Temporary Chat
+    pendingModel: DEFAULT_MODEL // model chosen before a new (not-yet-saved) chat has its first message
 };
-
-const MAX_HISTORY_MESSAGES = 20; // ~10 back-and-forth turns — keeps context relevant + cheap
 
 window.addEventListener('load', () => {
     setTimeout(() => {
@@ -47,8 +50,42 @@ function getActiveChat() {
     return state.chats.find(c => c.id === state.activeChatId);
 }
 
-// Returns the recent conversation (before the message currently being sent)
-// so the backend can give Gemini/Claude proper follow-up context.
+// --- Model selection (per chat, persisted; per-temp-session, in-memory only) ---
+
+function getActiveModel() {
+    if (state.isTempMode) return state.tempModel || DEFAULT_MODEL;
+    const chat = getActiveChat();
+    if (chat && chat.model) return chat.model;
+    return state.pendingModel || DEFAULT_MODEL;
+}
+
+function setActiveModel(model) {
+    if (model !== 'gemini' && model !== 'claude') return;
+
+    if (state.isTempMode) {
+        state.tempModel = model;
+    } else {
+        const chat = getActiveChat();
+        if (chat) {
+            chat.model = model;
+            localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
+        } else {
+            state.pendingModel = model;
+        }
+    }
+    updateModelMenuUI();
+}
+
+function updateModelMenuUI() {
+    const model = getActiveModel();
+    const geminiBtn = document.getElementById('model-gemini-btn');
+    const claudeBtn = document.getElementById('model-claude-btn');
+    if (geminiBtn) geminiBtn.classList.toggle('active-model', model === 'gemini');
+    if (claudeBtn) claudeBtn.classList.toggle('active-model', model === 'claude');
+}
+
+// --- Conversation history helpers ---
+
 function getHistoryForRequest() {
     const messages = state.isTempMode
         ? state.tempMessages
@@ -56,18 +93,23 @@ function getHistoryForRequest() {
     return messages.slice(-MAX_HISTORY_MESSAGES);
 }
 
-// Called after a successful exchange to append it to whichever
-// history store is active (temp vs. saved chat).
-function recordExchange(userText, aiText) {
+function recordExchange(userText, aiText, modelUsed) {
     if (state.isTempMode) {
         state.tempMessages.push({ role: 'user', text: userText }, { role: 'ai', text: aiText });
         return;
     }
     if (!state.activeChatId) {
         state.activeChatId = 'chat_' + Date.now();
-        state.chats.unshift({ id: state.activeChatId, title: userText.substring(0, 25), messages: [], timestamp: Date.now() });
+        state.chats.unshift({
+            id: state.activeChatId,
+            title: userText.substring(0, 25),
+            messages: [],
+            model: modelUsed || state.pendingModel || DEFAULT_MODEL,
+            timestamp: Date.now()
+        });
     }
     const chat = getActiveChat();
+    if (!chat.model) chat.model = modelUsed || DEFAULT_MODEL; // backfill for chats saved before this feature
     chat.messages.push({ role: 'user', text: userText }, { role: 'ai', text: aiText });
     localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
     renderSidebar();
@@ -81,9 +123,9 @@ async function handleSendMessage() {
     userInput.value = '';
     userInput.style.height = 'auto';
 
-    // Snapshot conversation history BEFORE adding this new message,
-    // so it lines up correctly as "everything said so far."
+    // Snapshot history + model BEFORE adding this new message.
     const history = getHistoryForRequest();
+    const model = getActiveModel();
 
     addMessage(text, 'user');
     const typingDiv = showTyping();
@@ -92,17 +134,26 @@ async function handleSendMessage() {
         const response = await fetch('/.netlify/functions/ask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: text, history })
+            body: JSON.stringify({ prompt: text, history, model })
         });
+
         const aiText = await response.text();
         typingDiv.remove();
+
+        if (!response.ok) {
+            // Show the backend's error text but keep the conversation intact
+            // so a failed model switch / API hiccup doesn't lose context.
+            addMessage(aiText || "Something went wrong. Please try again.", 'ai');
+            state.isGenerating = false;
+            return;
+        }
 
         const aiDiv = addMessage('', 'ai');
         const contentDiv = aiDiv.querySelector('.content');
 
         typeWriter(aiText, contentDiv, () => {
             state.isGenerating = false;
-            recordExchange(text, aiText);
+            recordExchange(text, aiText, model);
         });
     } catch (err) {
         if (typingDiv) typingDiv.remove();
@@ -139,6 +190,7 @@ function updateUI() {
         else addSystemNotice("How can I help you today?");
     }
     renderSidebar();
+    updateModelMenuUI();
 }
 
 function addSystemNotice(text) {
@@ -159,7 +211,7 @@ function renderSidebar() {
             if (state.isGenerating) return;
             state.activeChatId = chat.id;
             state.isTempMode = false;
-            state.tempMessages = []; // leaving temp mode — clear its scratch history
+            state.tempMessages = [];
             updateUI();
             toggleSidebar();
         };
@@ -174,7 +226,11 @@ function toggleSidebar() {
 
 document.getElementById('menu-toggle').onclick = toggleSidebar;
 document.getElementById('mobile-overlay').onclick = toggleSidebar;
-document.getElementById('dots-btn').onclick = (e) => { e.stopPropagation(); document.getElementById('context-menu').classList.toggle('show'); };
+document.getElementById('dots-btn').onclick = (e) => {
+    e.stopPropagation();
+    updateModelMenuUI();
+    document.getElementById('context-menu').classList.toggle('show');
+};
 document.addEventListener('click', () => document.getElementById('context-menu').classList.remove('show'));
 
 document.getElementById('sidebar-new-chat').onclick = () => {
@@ -182,6 +238,7 @@ document.getElementById('sidebar-new-chat').onclick = () => {
     state.isTempMode = false;
     state.activeChatId = null;
     state.tempMessages = [];
+    state.pendingModel = DEFAULT_MODEL;
     updateUI();
     toggleSidebar();
 };
@@ -191,6 +248,7 @@ document.getElementById('menu-new-chat').onclick = () => {
     state.isTempMode = false;
     state.activeChatId = null;
     state.tempMessages = [];
+    state.pendingModel = DEFAULT_MODEL;
     updateUI();
 };
 
@@ -198,7 +256,8 @@ document.getElementById('temp-toggle-btn').onclick = () => {
     if (state.isGenerating) return;
     state.isTempMode = !state.isTempMode;
     state.activeChatId = null;
-    state.tempMessages = []; // always start Temporary Chat's memory fresh
+    state.tempMessages = [];
+    state.tempModel = DEFAULT_MODEL; // always start Temporary Chat's memory + model fresh
     updateUI();
 };
 
@@ -207,6 +266,16 @@ document.getElementById('delete-chat-btn').onclick = () => {
     state.activeChatId = null;
     localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
     updateUI();
+};
+
+document.getElementById('model-gemini-btn').onclick = () => {
+    setActiveModel('gemini');
+    document.getElementById('context-menu').classList.remove('show');
+};
+
+document.getElementById('model-claude-btn').onclick = () => {
+    setActiveModel('claude');
+    document.getElementById('context-menu').classList.remove('show');
 };
 
 document.getElementById('send-btn').onclick = handleSendMessage;
