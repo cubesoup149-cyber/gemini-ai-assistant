@@ -1,59 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Valate | AI</title>
-    <link rel="icon" type="image/png" href="favicon.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div id="splash-screen" class="splash-screen">
-        <img src="valate.png" alt="Logo" class="splash-logo">
-    </div>
-
-    <div id="mobile-overlay" class="overlay"></div>
-
-    <aside id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <button id="sidebar-new-chat" class="btn-new-chat">+ New Chat</button>
-        </div>
-        <div id="chat-list" class="chat-list"></div>
-    </aside>
-
-    <div id="main-app" class="app-shell">
-        <header class="navbar">
-            <button id="menu-toggle" class="icon-btn">☰</button>
-            <div class="nav-brand">
-                <img src="valatetext.png" alt="Valate" class="header-logo">
-            </div>
-            <div class="menu-wrapper">
-                <button id="dots-btn" class="icon-btn">⋮</button>
-                <div id="context-menu" class="context-menu">
-                    <button id="menu-new-chat">New Chat</button>
-                    <button id="temp-toggle-btn">Temporary Chat</button>
-                    <div class="menu-divider"></div>
-                    <button id="delete-chat-btn" class="delete">Delete Chat</button>
-                </div>
-            </div>
-        </header>
-
-        <main id="chat-container" class="chat-viewport"></main>
-
-        <footer class="input-panel">
-            <div class="input-container">
-                <div class="input-box">
-                    <textarea id="user-input" placeholder="Message Valate..." rows="1"></textarea>
-                    <button id="send-btn">↑</button>
-                </div>
-            </div>
-        </footer>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="script.js"></script>
-</body>
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
+    <title>Valate | AI</title>  
+    <link rel="icon" type="image/png" href="favicon.png">  
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">  
+    <link rel="stylesheet" href="style.css">  
+</head>  
+<body>  
+    <div id="splash-screen" class="splash-screen">  
+        <img src="valate.png" alt="Logo" class="splash-logo">  
+    </div>  
+  
+    <div id="mobile-overlay" class="overlay"></div>  
+  
+    <aside id="sidebar" class="sidebar">  
+        <div class="sidebar-header">  
+            <button id="sidebar-new-chat" class="btn-new-chat">+ New Chat</button>  
+        </div>  
+        <div id="chat-list" class="chat-list"></div>  
+    </aside>  
+  
+    <div id="main-app" class="app-shell">  
+        <header class="navbar">  
+            <button id="menu-toggle" class="icon-btn">☰</button>  
+            <div class="nav-brand">  
+                <img src="valatetext.png" alt="Valate" class="header-logo">  
+            </div>  
+            <div class="menu-wrapper">  
+                <button id="dots-btn" class="icon-btn">⋮</button>  
+                <div id="context-menu" class="context-menu">  
+                    <button id="menu-new-chat">New Chat</button>  
+                    <button id="temp-toggle-btn">Temporary Chat</button>  
+                    <div class="menu-divider"></div>  
+                    <div class="menu-section-label">Model</div>  
+                    <button id="model-gemini-btn" class="model-option">Gemini</button>  
+                    <button id="model-claude-btn" class="model-option">Claude</button>  
+                    <div class="menu-divider"></div>  
+                    <button id="delete-chat-btn" class="delete">Delete Chat</button>  
+                </div>  
+            </div>  
+        </header>  
+  
+        <main id="chat-container" class="chat-viewport"></main>  
+  
+        <footer class="input-panel">  
+            <div class="input-container">  
+                <div class="input-box">  
+                    <textarea id="user-input" placeholder="Message Valate..." rows="1"></textarea>  
+                    <button id="send-btn">↑</button>  
+                </div>  
+            </div>  
+        </footer>  
+    </div>  
+  
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>  
+    <script src="script.js"></script>  
+</body>  
 </html>
