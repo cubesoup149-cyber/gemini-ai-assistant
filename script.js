@@ -1,48 +1,179 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+    getAuth,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+    getFirestore,
+    collection,
+    doc,
+    setDoc,
+    deleteDoc,
+    getDocs,
+    query,
+    orderBy
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+// --- Firebase setup ---
+// apiKey here is safe to expose (it identifies the project, not a secret).
+// Real security comes from Firestore rules + Auth — see setup notes.
+const firebaseConfig = {
+    apiKey: "AIzaSyDOwrUbMzQ1vNmzLRrN-JcYUgmYKJWtuLs",
+    authDomain: "valate-df5da.firebaseapp.com",
+    projectId: "valate-df5da",
+    storageBucket: "valate-df5da.firebasestorage.app",
+    messagingSenderId: "528974725565",
+    appId: "1:528974725565:web:2eaa13f69ff1480f6912d4"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
 const DEFAULT_MODEL = 'gemini'; // 'gemini' | 'claude'
-const MAX_HISTORY_MESSAGES = 20; // ~10 back-and-forth turns — keeps context relevant + cheap
+const MAX_HISTORY_MESSAGES = 20;
 
 // --- Markdown rendering setup ---
-// GFM enables tables/strikethrough/etc.; breaks makes single newlines act like <br>
-// so AI responses don't collapse into one dense paragraph.
 const mdRenderer = new marked.Renderer();
 mdRenderer.link = function (href, title, text) {
     const safeTitle = title ? ` title="${title}"` : '';
     return `<a href="${href}"${safeTitle} target="_blank" rel="noopener noreferrer">${text}</a>`;
 };
-marked.setOptions({
-    renderer: mdRenderer,
-    gfm: true,
-    breaks: true
-});
+marked.setOptions({ renderer: mdRenderer, gfm: true, breaks: true });
 
 let state = {
-    chats: JSON.parse(localStorage.getItem('VALATEA_CHATS')) || [],
+    chats: [],
     activeChatId: null,
     isTempMode: false,
     isGenerating: false,
-    tempMessages: [],       // in-memory only conversation history for Temporary Chat
-    tempModel: DEFAULT_MODEL, // in-memory only model choice for Temporary Chat
-    pendingModel: DEFAULT_MODEL // model chosen before a new (not-yet-saved) chat has its first message
+    tempMessages: [],
+    tempModel: DEFAULT_MODEL,
+    pendingModel: DEFAULT_MODEL
 };
 
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        const splash = document.getElementById('splash-screen');
-        const app = document.getElementById('main-app');
-        if (splash) splash.style.opacity = '0';
-        setTimeout(() => {
-            if (splash) splash.style.display = 'none';
-            if (app) app.classList.add('visible');
-        }, 500);
-    }, 1200);
-});
+let currentUser = null;
+let authMode = 'signin'; // 'signin' | 'signup'
 
 const chatContainer = document.getElementById('chat-container');
 const userInput = document.getElementById('user-input');
 
+// --- Splash ---
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => { splash.style.display = 'none'; }, 500);
+        }
+    }, 1200);
+});
+
+// --- Auth screen helpers ---
+function showAuthScreen() {
+    document.getElementById('main-app').classList.remove('visible');
+    document.getElementById('auth-screen').classList.add('show');
+}
+function showApp() {
+    document.getElementById('auth-screen').classList.remove('show');
+    document.getElementById('main-app').classList.add('visible');
+}
+function setAuthMode(mode) {
+    authMode = mode;
+    hideAuthError();
+    document.getElementById('auth-title').textContent = mode === 'signup' ? 'Create your account' : 'Welcome back';
+    document.getElementById('auth-submit-btn').textContent = mode === 'signup' ? 'Sign Up' : 'Sign In';
+    document.getElementById('auth-toggle-text').textContent = mode === 'signup' ? 'Already have an account?' : "Don't have an account?";
+    document.getElementById('auth-toggle-btn').textContent = mode === 'signup' ? 'Sign In' : 'Sign Up';
+}
+function showAuthError(message) {
+    const el = document.getElementById('auth-error');
+    el.textContent = message;
+    el.classList.add('show');
+}
+function hideAuthError() {
+    const el = document.getElementById('auth-error');
+    el.classList.remove('show');
+    el.textContent = '';
+}
+function friendlyAuthError(err) {
+    const code = err.code || '';
+    if (code.includes('wrong-password') || code.includes('invalid-credential')) return 'Incorrect email or password.';
+    if (code.includes('user-not-found')) return 'No account found with that email.';
+    if (code.includes('email-already-in-use')) return 'An account with this email already exists.';
+    if (code.includes('weak-password')) return 'Password should be at least 6 characters.';
+    if (code.includes('invalid-email')) return 'Please enter a valid email address.';
+    if (code.includes('popup-closed-by-user')) return 'Sign-in was cancelled.';
+    return 'Something went wrong. Please try again.';
+}
+
+// --- Firestore chat storage ---
+function chatsCollectionRef() {
+    return collection(db, 'users', currentUser.uid, 'chats');
+}
+async function loadUserChats() {
+    try {
+        const q = query(chatsCollectionRef(), orderBy('timestamp', 'desc'));
+        const snap = await getDocs(q);
+        state.chats = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+        console.error('Failed to load chats:', err);
+        state.chats = [];
+    }
+}
+async function saveChatToFirestore(chat) {
+    if (!currentUser) return;
+    try {
+        await setDoc(doc(db, 'users', currentUser.uid, 'chats', chat.id), {
+            title: chat.title,
+            model: chat.model,
+            timestamp: chat.timestamp,
+            messages: chat.messages
+        });
+    } catch (err) {
+        console.error('Failed to save chat:', err);
+    }
+}
+async function deleteChatFromFirestore(chatId) {
+    if (!currentUser) return;
+    try {
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'chats', chatId));
+    } catch (err) {
+        console.error('Failed to delete chat:', err);
+    }
+}
+
+// --- Auth state listener (drives which screen is shown) ---
+onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    if (user) {
+        document.getElementById('user-email-display').textContent = user.email || user.displayName || 'Signed in';
+        await loadUserChats();
+        state.activeChatId = null;
+        state.isTempMode = false;
+        state.tempMessages = [];
+        updateUI();
+        showApp();
+    } else {
+        state.chats = [];
+        state.activeChatId = null;
+        state.isTempMode = false;
+        state.tempMessages = [];
+        document.getElementById('user-email-display').textContent = '';
+        chatContainer.innerHTML = '';
+        renderSidebar();
+        showAuthScreen();
+    }
+});
+
+// --- Typewriter ---
 function typeWriter(text, element, callback) {
     let i = 0;
-    const speed = 4; // Faster typing for better UX
+    const speed = 4;
     function step() {
         if (i <= text.length) {
             element.innerHTML = marked.parse(text.slice(0, i));
@@ -67,32 +198,28 @@ function getActiveChat() {
     return state.chats.find(c => c.id === state.activeChatId);
 }
 
-// --- Model selection (per chat, persisted; per-temp-session, in-memory only) ---
-
+// --- Model selection ---
 function getActiveModel() {
     if (state.isTempMode) return state.tempModel || DEFAULT_MODEL;
     const chat = getActiveChat();
     if (chat && chat.model) return chat.model;
     return state.pendingModel || DEFAULT_MODEL;
 }
-
 function setActiveModel(model) {
     if (model !== 'gemini' && model !== 'claude') return;
-
     if (state.isTempMode) {
         state.tempModel = model;
     } else {
         const chat = getActiveChat();
         if (chat) {
             chat.model = model;
-            localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
+            saveChatToFirestore(chat);
         } else {
             state.pendingModel = model;
         }
     }
     updateModelMenuUI();
 }
-
 function updateModelMenuUI() {
     const model = getActiveModel();
     const geminiBtn = document.getElementById('model-gemini-btn');
@@ -101,15 +228,11 @@ function updateModelMenuUI() {
     if (claudeBtn) claudeBtn.classList.toggle('active-model', model === 'claude');
 }
 
-// --- Conversation history helpers ---
-
+// --- Conversation history ---
 function getHistoryForRequest() {
-    const messages = state.isTempMode
-        ? state.tempMessages
-        : (getActiveChat()?.messages || []);
+    const messages = state.isTempMode ? state.tempMessages : (getActiveChat()?.messages || []);
     return messages.slice(-MAX_HISTORY_MESSAGES);
 }
-
 function recordExchange(userText, aiText, modelUsed) {
     if (state.isTempMode) {
         state.tempMessages.push({ role: 'user', text: userText }, { role: 'ai', text: aiText });
@@ -126,21 +249,20 @@ function recordExchange(userText, aiText, modelUsed) {
         });
     }
     const chat = getActiveChat();
-    if (!chat.model) chat.model = modelUsed || DEFAULT_MODEL; // backfill for chats saved before this feature
+    if (!chat.model) chat.model = modelUsed || DEFAULT_MODEL;
     chat.messages.push({ role: 'user', text: userText }, { role: 'ai', text: aiText });
-    localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
     renderSidebar();
+    saveChatToFirestore(chat);
 }
 
 async function handleSendMessage() {
     const text = userInput.value.trim();
-    if (!text || state.isGenerating) return;
+    if (!text || state.isGenerating || !currentUser) return;
 
     state.isGenerating = true;
     userInput.value = '';
     userInput.style.height = 'auto';
 
-    // Snapshot history + model BEFORE adding this new message.
     const history = getHistoryForRequest();
     const model = getActiveModel();
 
@@ -158,8 +280,6 @@ async function handleSendMessage() {
         typingDiv.remove();
 
         if (!response.ok) {
-            // Show the backend's error text but keep the conversation intact
-            // so a failed model switch / API hiccup doesn't lose context.
             addMessage(aiText || "Something went wrong. Please try again.", 'ai');
             state.isGenerating = false;
             return;
@@ -264,7 +384,6 @@ document.getElementById('sidebar-new-chat').onclick = () => {
     updateUI();
     toggleSidebar();
 };
-
 document.getElementById('menu-new-chat').onclick = () => {
     if (state.isGenerating) return;
     state.isTempMode = false;
@@ -273,35 +392,81 @@ document.getElementById('menu-new-chat').onclick = () => {
     state.pendingModel = DEFAULT_MODEL;
     updateUI();
 };
-
 document.getElementById('temp-toggle-btn').onclick = () => {
     if (state.isGenerating) return;
     state.isTempMode = !state.isTempMode;
     state.activeChatId = null;
     state.tempMessages = [];
-    state.tempModel = DEFAULT_MODEL; // always start Temporary Chat's memory + model fresh
+    state.tempModel = DEFAULT_MODEL;
     updateUI();
 };
-
-document.getElementById('delete-chat-btn').onclick = () => {
-    state.chats = state.chats.filter(c => c.id !== state.activeChatId);
+document.getElementById('delete-chat-btn').onclick = async () => {
+    if (!state.activeChatId) return;
+    const idToDelete = state.activeChatId;
+    state.chats = state.chats.filter(c => c.id !== idToDelete);
     state.activeChatId = null;
-    localStorage.setItem('VALATEA_CHATS', JSON.stringify(state.chats));
     updateUI();
+    await deleteChatFromFirestore(idToDelete);
 };
-
 document.getElementById('model-gemini-btn').onclick = () => {
     setActiveModel('gemini');
     document.getElementById('context-menu').classList.remove('show');
 };
-
 document.getElementById('model-claude-btn').onclick = () => {
     setActiveModel('claude');
     document.getElementById('context-menu').classList.remove('show');
+};
+document.getElementById('sign-out-btn').onclick = async () => {
+    if (state.isGenerating) return;
+    document.getElementById('context-menu').classList.remove('show');
+    try {
+        await signOut(auth);
+    } catch (err) {
+        console.error('Sign out failed:', err);
+    }
 };
 
 document.getElementById('send-btn').onclick = handleSendMessage;
 userInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; };
 userInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } };
 
-updateUI();
+// --- Auth form handlers ---
+document.getElementById('auth-toggle-btn').onclick = () => {
+    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+};
+
+document.getElementById('auth-form').onsubmit = async (e) => {
+    e.preventDefault();
+    hideAuthError();
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    if (!email || !password) return;
+
+    const submitBtn = document.getElementById('auth-submit-btn');
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Please wait...';
+
+    try {
+        if (authMode === 'signup') {
+            await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+            await signInWithEmailAndPassword(auth, email, password);
+        }
+        // onAuthStateChanged handles showing the app
+    } catch (err) {
+        showAuthError(friendlyAuthError(err));
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+    }
+};
+
+document.getElementById('google-signin-btn').onclick = async () => {
+    hideAuthError();
+    try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (err) {
+        showAuthError(friendlyAuthError(err));
+    }
+};
