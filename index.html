@@ -48,7 +48,7 @@
     <div id="memory-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <h2>🧠 Memory</h2>
+                <h2>Memory</h2>
                 <button id="memory-close-btn" class="icon-btn">✕</button>
             </div>
             <p class="modal-subtitle">Valate remembers these across every chat. Say "remember that..." anytime, or add one manually.</p>
@@ -58,6 +58,53 @@
             </div>
             <ul id="memory-list" class="memory-list"></ul>
             <p id="memory-empty" class="memory-empty">No memories yet.</p>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-card settings-card">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button id="settings-close-btn" class="icon-btn">✕</button>
+            </div>
+            <p class="modal-subtitle">Personalize how Valate looks and feels. Changes save automatically.</p>
+
+            <div class="settings-section">
+                <div class="settings-label">Accent color</div>
+                <div class="accent-swatches" id="accent-swatches">
+                    <div class="accent-swatch" data-accent-a="#7c5cff" data-accent-b="#00d4ff" style="background: linear-gradient(135deg, #7c5cff, #00d4ff);" title="Violet (default)"></div>
+                    <div class="accent-swatch" data-accent-a="#ff5c8a" data-accent-b="#ff9a5c" style="background: linear-gradient(135deg, #ff5c8a, #ff9a5c);" title="Sunset"></div>
+                    <div class="accent-swatch" data-accent-a="#22c55e" data-accent-b="#06d6a0" style="background: linear-gradient(135deg, #22c55e, #06d6a0);" title="Emerald"></div>
+                    <div class="accent-swatch" data-accent-a="#3b82f6" data-accent-b="#38bdf8" style="background: linear-gradient(135deg, #3b82f6, #38bdf8);" title="Ocean"></div>
+                    <div class="accent-swatch" data-accent-a="#f43f5e" data-accent-b="#fb7185" style="background: linear-gradient(135deg, #f43f5e, #fb7185);" title="Rose"></div>
+                    <div class="accent-swatch" data-accent-a="#eab308" data-accent-b="#facc15" style="background: linear-gradient(135deg, #eab308, #facc15);" title="Amber"></div>
+                    <div class="accent-swatch accent-swatch-custom" title="Custom color" id="accent-swatch-custom">
+                        <input type="color" id="accent-custom-input" value="#7c5cff">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-label">Text size</div>
+                <div class="segmented-group" id="fontsize-group">
+                    <button class="segmented-btn" data-size="14">Small</button>
+                    <button class="segmented-btn" data-size="15">Medium</button>
+                    <button class="segmented-btn" data-size="17">Large</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-label">Message spacing</div>
+                <div class="segmented-group" id="density-group">
+                    <button class="segmented-btn" data-density="compact">Compact</button>
+                    <button class="segmented-btn" data-density="comfortable">Comfortable</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <button id="settings-reset-btn" class="settings-reset-btn">Reset to defaults</button>
+            </div>
         </div>
     </div>
 
@@ -88,6 +135,7 @@
                     <button id="menu-new-chat">New Chat</button>  
                     <button id="temp-toggle-btn">Temporary Chat</button>  
                     <button id="memory-menu-btn">🧠 Memory</button>
+                    <button id="settings-menu-btn">⚙️ Settings</button>
                     <div class="menu-divider"></div>  
                     <div class="menu-section-label">Model</div>  
                     <button id="model-gemini-btn" class="model-option">Gemini</button>  
