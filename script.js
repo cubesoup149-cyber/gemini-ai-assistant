@@ -198,15 +198,25 @@ function renderMemoryList() {
         list.appendChild(li);
     });
 }
-function showMemoryModal() {
+function showUserSettingsModal(tab) {
     renderMemoryList();
-    document.getElementById('memory-modal').classList.add('show');
+    refreshSettingsUI();
+    if (tab) setSettingsTab(tab);
+    document.getElementById('usersettings-modal').classList.add('show');
 }
-function hideMemoryModal() { document.getElementById('memory-modal').classList.remove('show'); }
+function hideUserSettingsModal() { document.getElementById('usersettings-modal').classList.remove('show'); }
+function setSettingsTab(tab) {
+    document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+        panel.hidden = panel.dataset.panel !== tab;
+    });
+}
 function showMemoryToast() {
     const toast = document.createElement('div');
     toast.className = 'memory-toast';
-    toast.textContent = '🧠 Saved to memory';
+    toast.textContent = 'Saved to memory';
     chatContainer.appendChild(toast);
     chatContainer.scrollTop = chatContainer.scrollHeight;
     setTimeout(() => toast.remove(), 2500);
@@ -425,7 +435,7 @@ function addMessage(text, role) {
     const div = document.createElement('div');
     div.className = `msg ${role}-msg`;
     if (role === 'ai') {
-        div.innerHTML = `<div class="msg-row"><div class="avatar ai-avatar">V</div><div class="content">${text ? marked.parse(text) : ''}</div></div>`;
+        div.innerHTML = `<div class="content">${text ? marked.parse(text) : ''}</div>`;
     } else {
         div.innerHTML = `<div class="content">${text}</div>`;
     }
@@ -444,7 +454,7 @@ function addMessage(text, role) {
 function showTyping() {
     const div = document.createElement('div');
     div.className = 'msg ai-msg';
-    div.innerHTML = `<div class="msg-row"><div class="avatar ai-avatar">V</div><div class="content"><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div></div>`;
+    div.innerHTML = `<div class="content"><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
     chatContainer.appendChild(div);
     chatContainer.scrollTop = chatContainer.scrollHeight;
     return div;
@@ -628,13 +638,7 @@ document.getElementById('sign-out-btn').onclick = async () => {
     try { await signOut(auth); } catch (err) { console.error('Sign out failed:', err); }
 };
 
-// --- Memory modal wiring ---
-document.getElementById('memory-menu-btn').onclick = () => {
-    document.getElementById('context-menu').classList.remove('show');
-    showMemoryModal();
-};
-document.getElementById('memory-close-btn').onclick = hideMemoryModal;
-document.getElementById('memory-modal').onclick = (e) => { if (e.target.id === 'memory-modal') hideMemoryModal(); };
+// --- Memory (now a tab inside User Settings) wiring ---
 document.getElementById('memory-add-btn').onclick = async () => {
     const input = document.getElementById('memory-input');
     const text = input.value.trim();
@@ -665,18 +669,21 @@ function updateSettings(patch) {
     saveSettings(settings);
     refreshSettingsUI();
 }
-function showSettingsModal() {
-    refreshSettingsUI();
-    document.getElementById('settings-modal').classList.add('show');
-}
-function hideSettingsModal() { document.getElementById('settings-modal').classList.remove('show'); }
-
+// --- User Settings modal: open points (three-dots menu, and the gear button next to the account email) ---
 document.getElementById('settings-menu-btn').onclick = () => {
     document.getElementById('context-menu').classList.remove('show');
-    showSettingsModal();
+    showUserSettingsModal('general');
 };
-document.getElementById('settings-close-btn').onclick = hideSettingsModal;
-document.getElementById('settings-modal').onclick = (e) => { if (e.target.id === 'settings-modal') hideSettingsModal(); };
+document.getElementById('account-settings-btn').onclick = () => {
+    showUserSettingsModal('general');
+};
+document.getElementById('usersettings-close-btn').onclick = hideUserSettingsModal;
+document.getElementById('usersettings-modal').onclick = (e) => { if (e.target.id === 'usersettings-modal') hideUserSettingsModal(); };
+document.getElementById('settings-tabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('.settings-tab-btn');
+    if (!btn) return;
+    setSettingsTab(btn.dataset.tab);
+});
 
 document.getElementById('accent-swatches').addEventListener('click', (e) => {
     const swatch = e.target.closest('.accent-swatch:not(.accent-swatch-custom)');
@@ -733,3 +740,4 @@ document.getElementById('google-signin-btn').onclick = async () => {
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch (err) { showAuthError(friendlyAuthError(err)); }
 };
+        
