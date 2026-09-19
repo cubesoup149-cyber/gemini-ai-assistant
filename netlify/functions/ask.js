@@ -118,10 +118,28 @@ async function callClaude(prompt, history, systemPrompt, options = {}) {
     return textBlocks.join("\n\n") || "No response from AI.";
 }
 
-async function fetchWithRetry(url, options, retries = 3) {
+async function fetchWithRetry(url, options, retries = 2) {
     for (let attempt = 0; attempt <= retries; attempt++) {
-        const response = await fetch(url, options);
-        const data = await response.json();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000); // stay under Netlify's ~10s function limit
+        let response;
+        try {
+            response = await fetch(url, { ...options, signal: controller.signal });
+        } catch (err) {
+            clearTimeout(timeout);
+            if (err.name === 'AbortError') {
+                if (attempt === retries) throw new Error('Request timed out.');
+                continue;
+            }
+            throw err;
+        }
+        clearTimeout(timeout);
+
+        // Read as text first — upstream error pages (outages, proxies) aren't always JSON.
+        const raw = await response.text();
+        let data;
+        try { data = raw ? JSON.parse(raw) : {}; } catch { data = { error: { message: raw.slice(0, 200) || `Empty response (${response.status})` } }; }
+
         if (response.ok) return data;
         const retryable = response.status === 429 || response.status === 503 || response.status === 529;
         if (!retryable || attempt === retries) throw new Error(data.error?.message || `API Error ${response.status}`);
