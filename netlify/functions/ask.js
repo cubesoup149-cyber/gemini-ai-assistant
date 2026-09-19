@@ -73,7 +73,7 @@ async function callGemini(prompt, history, systemPrompt, options = {}) {
     const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) throw new Error("GEMINI_API_KEY missing in Netlify environment variables.");
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${API_KEY}`;
 
     const contents = history.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
     contents.push({ role: 'user', parts: [{ text: prompt }] });
@@ -83,7 +83,7 @@ async function callGemini(prompt, history, systemPrompt, options = {}) {
         contents
     };
     if (useTools) requestBody.tools = [{ google_search: {} }];
-    if (maxTokens) requestBody.generationConfig = { maxOutputTokens: maxTokens };
+    if (maxTokens) requestBody.generationConfig = { maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } };
 
     const data = await fetchWithRetry(url, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody)
