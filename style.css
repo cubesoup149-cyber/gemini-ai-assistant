@@ -168,8 +168,11 @@ html, body {
 .accent-swatch:hover { transform: scale(1.1); }
 .accent-swatch.active { border-color: #fff; }
 .accent-swatch.active::after {
-    content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 14px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    content: ''; position: absolute; left: 50%; top: 47%;
+    width: 11px; height: 6px; margin: -3px 0 0 -6px;
+    border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
 }
 .accent-swatch-custom {
     display: flex; align-items: center; justify-content: center;
@@ -194,6 +197,25 @@ html, body {
     transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .settings-reset-btn:hover { color: #fff; border-color: #ff6b6b; }
+
+/* --- Settings modal tabs --- */
+.settings-tabs {
+    display: flex; gap: 4px; background: var(--bg-app); border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px; margin-bottom: 20px;
+}
+.settings-tab-btn {
+    flex: 1; padding: 9px 8px; background: none; border: none; border-radius: 9px; color: var(--text-muted);
+    font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: background 0.18s var(--ease-smooth), color 0.18s;
+}
+.settings-tab-btn.active { background: var(--bg-surface); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.settings-tab-btn:hover:not(.active) { color: #fff; }
+.settings-tab-panel[hidden] { display: none; }
+
+/* --- Sidebar account row (email + settings gear) --- */
+.user-account-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.user-account-row .user-email-display { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-settings-btn { padding: 6px; flex-shrink: 0; }
+.account-settings-btn:hover { color: var(--accent-b); }
   
 /* --- Sidebar --- */  
 .sidebar {  
@@ -338,16 +360,15 @@ textarea { flex: 1; background: none; border: none; color: white; padding: 10px 
     letter-spacing: 0.06em;
     color: var(--text-muted);
 }
+.menu-btn-icon { display: inline-flex; margin-right: 9px; vertical-align: middle; color: var(--text-muted); }
+#settings-menu-btn { display: flex !important; align-items: center; }
 .model-option {
     display: flex !important;
     align-items: center;
     justify-content: space-between;
 }
-.model-option.active-model::after {
-    content: '✓';
-    color: var(--accent-b);
-    font-weight: 700;
-}
+.model-check { visibility: hidden; color: var(--accent-b); flex-shrink: 0; }
+.model-option.active-model .model-check { visibility: visible; }
   
 .icon-btn { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; padding: 10px; transition: color 0.15s; }  
 .icon-btn:hover { color: #fff; }
@@ -357,22 +378,16 @@ textarea { flex: 1; background: none; border: none; color: white; padding: 10px 
 .user-msg { align-self: flex-end; background: var(--bg-surface); padding: 12px 17px; border-radius: 18px 18px 4px 18px; color: #ffffff !important; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; line-height: 1.55; }  
   
 .ai-msg { align-self: flex-start; width: 100%; max-width: 100%; }  
-.msg-row { display: flex; gap: 12px; align-items: flex-start; }
-.avatar {
-    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; color: #fff; margin-top: 2px;
-}
-.ai-avatar { background: var(--accent-gradient); }
 .ai-msg .content { color: #ffffff !important; overflow-wrap: break-word; word-break: break-word; flex: 1; min-width: 0; }  
   
 .system-msg { align-self: center; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px; }  
   
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }  
   
-.typing-dots { display: flex; gap: 4px; padding: 10px 0; align-items: center; }  
-.dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; animation: pulseDot 1.4s infinite; }  
-@keyframes pulseDot { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+/* Loading indicator: all three dots jump together, in sync */
+.typing-dots { display: flex; gap: 5px; padding: 10px 0; align-items: center; }  
+.dot { width: 7px; height: 7px; background: var(--accent-gradient); border-radius: 50%; animation: jumpDot 0.9s ease-in-out infinite; animation-delay: 0s; }  
+@keyframes jumpDot { 0%, 100% { transform: translateY(0); opacity: 0.55; } 50% { transform: translateY(-7px); opacity: 1; } }
 
 /* --- Markdown content styling --- */
 .ai-msg .content { font-size: var(--msg-font-size); line-height: 1.7; }
