@@ -20,7 +20,7 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 
-const DEFAULT_MODEL = 'gemini';
+const DEFAULT_MODEL = 'gpt-6-astra'; // label only; the real model is set on the server (AGENTROUTER_MODEL)
 const MAX_HISTORY_MESSAGES = 20;
 const REMEMBER_REGEX = /^(?:please\s+)?(?:remember(?: that)?|don't forget(?: that)?|note that)[:,]?\s*(.+)/i;
 
@@ -292,31 +292,10 @@ function typeWriter(text, element, callback) {
 
 function getActiveChat() { return state.chats.find(c => c.id === state.activeChatId); }
 
-// --- Model selection ---
-function getActiveModel() {
-    if (state.isTempMode) return state.tempModel || DEFAULT_MODEL;
-    const chat = getActiveChat();
-    if (chat && chat.model) return chat.model;
-    return state.pendingModel || DEFAULT_MODEL;
-}
-function setActiveModel(model) {
-    if (model !== 'gemini' && model !== 'claude') return;
-    if (state.isTempMode) {
-        state.tempModel = model;
-    } else {
-        const chat = getActiveChat();
-        if (chat) { chat.model = model; saveChatToFirestore(chat); }
-        else { state.pendingModel = model; }
-    }
-    updateModelMenuUI();
-}
-function updateModelMenuUI() {
-    const model = getActiveModel();
-    const geminiBtn = document.getElementById('model-gemini-btn');
-    const claudeBtn = document.getElementById('model-claude-btn');
-    if (geminiBtn) geminiBtn.classList.toggle('active-model', model === 'gemini');
-    if (claudeBtn) claudeBtn.classList.toggle('active-model', model === 'claude');
-}
+// --- Model ---
+// Single provider (AgentRouter). The model itself is configured on the server.
+function getActiveModel() { return DEFAULT_MODEL; }
+function updateModelMenuUI() { /* no model switching anymore */ }
 
 // --- Conversation history ---
 function getHistoryForRequest() {
@@ -354,8 +333,7 @@ async function generateSmartTitle(chat, userText, aiText, model) {
             body: JSON.stringify({
                 mode: 'title',
                 prompt: userText,
-                history: [{ role: 'ai', text: aiText.slice(0, 1000) }],
-                model
+                history: [{ role: 'ai', text: aiText.slice(0, 1000) }]
             })
         });
         if (!response.ok) return;
@@ -398,7 +376,7 @@ async function handleSendMessage() {
         const response = await fetch('/.netlify/functions/ask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: text, history, model, memory: memoryTexts })
+            body: JSON.stringify({ prompt: text, history, memory: memoryTexts })
         });
 
         const aiText = await response.text();
@@ -630,8 +608,6 @@ document.getElementById('delete-chat-btn').onclick = async () => {
     if (!state.activeChatId) return;
     await deleteChatById(state.activeChatId);
 };
-document.getElementById('model-gemini-btn').onclick = () => { setActiveModel('gemini'); document.getElementById('context-menu').classList.remove('show'); };
-document.getElementById('model-claude-btn').onclick = () => { setActiveModel('claude'); document.getElementById('context-menu').classList.remove('show'); };
 document.getElementById('sign-out-btn').onclick = async () => {
     if (state.isGenerating) return;
     document.getElementById('context-menu').classList.remove('show');
@@ -740,4 +716,4 @@ document.getElementById('google-signin-btn').onclick = async () => {
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch (err) { showAuthError(friendlyAuthError(err)); }
 };
-        
+                    
