@@ -65,14 +65,27 @@ exports.handler = async (event) => {
         const aiResponse = await callAgentRouter(prompt, trimmedHistory, systemPrompt, { maxTokens: 2048 });
         return { statusCode: 200, headers: { "Content-Type": "text/plain" }, body: aiResponse };
     } catch (err) {
-        console.error("AgentRouter call failed:", err.message);
+        console.error("AgentRouter call failed:", err.message, err.details || "");
         return {
-            statusCode: 502,
+            statusCode: err.statusCode && err.statusCode >= 400 ? err.statusCode : 502,
             headers: { "Content-Type": "text/plain" },
-            body: `Valate's AI is unavailable right now (${err.message}). Please try again in a moment.`
+            body: formatError(err)
         };
     }
 };
+
+function formatError(err) {
+    let msg = "Error: " + err.message;
+    if (err.details) msg += "\n\nDetails: " + err.details;
+    return msg;
+}
+
+function makeError(message, statusCode, details) {
+    const e = new Error(message);
+    e.statusCode = statusCode;
+    e.details = details;
+    return e;
+}
 
 // ---- Provider-specific request/response shape (change here only if AgentRouter's docs differ) ----
 
@@ -96,10 +109,10 @@ async function callAgentRouter(prompt, history, systemPrompt, options = {}) {
     const { maxTokens = 2048 } = options;
 
     const API_KEY = process.env.AGENTROUTER_API_KEY;
-    if (!API_KEY) throw new Error("AGENTROUTER_API_KEY is missing in Netlify environment variables.");
+    if (!API_KEY) throw makeError("AGENTROUTER_API_KEY is missing in Netlify environment variables (add it, then redeploy).", 500);
 
     const API_URL = process.env.AGENTROUTER_API_URL;
-    if (!API_URL) throw new Error("AGENTROUTER_API_URL is missing in Netlify environment variables.");
+    if (!API_URL) throw makeError("AGENTROUTER_API_URL is missing in Netlify environment variables (add it, then redeploy).", 500);
 
     const model = process.env.AGENTROUTER_MODEL || DEFAULT_MODEL;
     const requestBody = buildRequest(model, systemPrompt, history, prompt, maxTokens);
@@ -110,7 +123,9 @@ async function callAgentRouter(prompt, history, systemPrompt, options = {}) {
         body: JSON.stringify(requestBody)
     });
 
-    return extractText(data) || "No response from AI.";
+    const text = extractText(data);
+    if (!text) throw makeError("AgentRouter returned an empty response.", 502, "Raw reply: " + JSON.stringify(data).slice(0, 500));
+    return text;
 }
 
 async function fetchWithRetry(url, options, retries = 2) {
@@ -123,10 +138,10 @@ async function fetchWithRetry(url, options, retries = 2) {
         } catch (err) {
             clearTimeout(timeout);
             if (err.name === "AbortError") {
-                if (attempt === retries) throw new Error("Request timed out.");
+                if (attempt === retries) throw makeError("AgentRouter did not respond in time (timed out after 8s).", 504);
                 continue;
             }
-            throw err;
+            throw makeError("Could not reach AgentRouter: " + err.message, 502, "URL: " + safeUrl(url));
         }
         clearTimeout(timeout);
 
@@ -139,9 +154,18 @@ async function fetchWithRetry(url, options, retries = 2) {
 
         const retryable = response.status === 429 || response.status === 503 || response.status === 529;
         if (!retryable || attempt === retries) {
-            const msg = (data.error && (data.error.message || data.error)) || data.message || `API Error ${response.status}`;
-            throw new Error(typeof msg === "string" ? msg.slice(0, 200) : `API Error ${response.status}`);
+            const msg = (data.error && (data.error.message || data.error)) || data.message || "";
+            const shown = typeof msg === "string" ? msg : JSON.stringify(msg);
+            throw makeError(
+                `AgentRouter returned HTTP ${response.status}` + (shown ? `: ${shown.slice(0, 300)}` : ""),
+                response.status,
+                "Raw reply: " + raw.slice(0, 500)
+            );
         }
         await new Promise(res => setTimeout(res, 500 * Math.pow(2, attempt)));
     }
-            }
+}
+
+function safeUrl(u) {
+    try { const x = new URL(u); return x.origin + x.pathname; } catch { return "(invalid AGENTROUTER_API_URL)"; }
+    }
