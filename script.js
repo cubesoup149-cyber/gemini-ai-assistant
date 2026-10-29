@@ -354,6 +354,16 @@ async function generateSmartTitle(chat, userText, aiText, model) {
     }
 }
 
+// Turns a failed /ask response into readable text (handles HTML error pages from Netlify too).
+function describeHttpError(status, body) {
+    let text = (body || '').trim();
+    if (/^<(!doctype|html)/i.test(text)) text = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!text) text = 'The server returned no details.';
+    if (status === 404) text += '\n\n(The /.netlify/functions/ask function was not found. Check that netlify/functions/ask.js is deployed.)';
+    if (!/^Error/i.test(text)) text = `Error (HTTP ${status}): ` + text;
+    return text.slice(0, 1200);
+}
+
 async function handleSendMessage() {
     const text = userInput.value.trim();
     if (!text || state.isGenerating || !currentUser) return;
@@ -383,7 +393,7 @@ async function handleSendMessage() {
         typingDiv.remove();
 
         if (!response.ok) {
-            addMessage(aiText || "Something went wrong. Please try again.", 'ai');
+            addMessage(describeHttpError(response.status, aiText), 'ai');
             state.isGenerating = false;
             sendBtn.disabled = false;
             return;
@@ -403,7 +413,7 @@ async function handleSendMessage() {
         });
     } catch (err) {
         if (typingDiv) typingDiv.remove();
-        addMessage("Connection error. Try again.", 'ai');
+        addMessage("Error: could not reach the Valate server (" + (err && err.message ? err.message : "network error") + "). Check your internet connection and try again.", 'ai');
         state.isGenerating = false;
         sendBtn.disabled = false;
     }
@@ -716,4 +726,3 @@ document.getElementById('google-signin-btn').onclick = async () => {
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch (err) { showAuthError(friendlyAuthError(err)); }
 };
-                    
