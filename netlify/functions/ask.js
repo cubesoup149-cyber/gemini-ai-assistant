@@ -3,18 +3,20 @@
 //
 // Netlify environment variables:
 //   AGENTROUTER_API_KEY  (required) your AgentRouter token — server-side only
-//   AGENTROUTER_API_URL  (required) full chat endpoint URL copied from the AgentRouter docs
 //   AGENTROUTER_MODEL    (optional) model ID, defaults to gpt-6-astra
+//   AGENTROUTER_API_URL  (optional) overrides the endpoint below
 //
-// Request format below is the OpenAI-style "chat completions" shape
-// (Authorization: Bearer <key>, model + messages[]). Confirm it matches the AgentRouter
-// docs for your model; if it differs, only buildRequest() / extractText() need changing.
+// AgentRouter docs: "OpenAI Compatible" provider, base URL https://agentrouter.org/v1.
+// The chat path /chat/completions is the standard OpenAI-compatible path appended to that base URL.
+// Request shape: Authorization: Bearer <key>, model + messages[].
+// If it ever differs, only buildRequest() / extractText() need changing.
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_CHARS_PER_MESSAGE = 3000;
 const MAX_MEMORY_ITEMS = 30;
 const MAX_CHARS_PER_MEMORY = 300;
 const DEFAULT_MODEL = "gpt-6-astra";
+const DEFAULT_API_URL = "https://agentrouter.org/v1/chat/completions";
 
 const BASE_SYSTEM_PROMPT = "You are Valate, a helpful AI assistant. Pay close attention to the earlier turns of this conversation so you correctly understand follow-up or continuation requests such as 'make another one', 'make it shorter', 'change the ending', 'do the same but for X', 'continue', or 'what about the second one'. " +
     "Format every response in clean, well-structured Markdown, the way a modern AI chat assistant would: break your answer into short paragraphs (2-4 sentences) instead of a single wall of text, use ## or ### headings to separate distinct sections in longer answers, use bullet or numbered lists for anything list-like, use **bold** to highlight key terms, and use fenced code blocks for any code. Leave a blank line between paragraphs, headings, and list blocks so the response is easy to scan. Keep simple, short answers to a sentence or two without forcing unnecessary structure.";
@@ -111,8 +113,7 @@ async function callAgentRouter(prompt, history, systemPrompt, options = {}) {
     const API_KEY = process.env.AGENTROUTER_API_KEY;
     if (!API_KEY) throw makeError("AGENTROUTER_API_KEY is missing in Netlify environment variables (add it, then redeploy).", 500);
 
-    const API_URL = process.env.AGENTROUTER_API_URL;
-    if (!API_URL) throw makeError("AGENTROUTER_API_URL is missing in Netlify environment variables (add it, then redeploy).", 500);
+    const API_URL = process.env.AGENTROUTER_API_URL || DEFAULT_API_URL;
 
     const model = process.env.AGENTROUTER_MODEL || DEFAULT_MODEL;
     const requestBody = buildRequest(model, systemPrompt, history, prompt, maxTokens);
@@ -148,7 +149,25 @@ async function fetchWithRetry(url, options, retries = 2) {
         // Read as text first — upstream error pages (outages, proxies) aren't always JSON.
         const raw = await response.text();
         let data;
-        try { data = raw ? JSON.parse(raw) : {}; } catch { data = { error: { message: raw.slice(0, 200) || `Empty response (${response.status})` } }; }
+        let isJson = true;
+        try { data = raw ? JSON.parse(raw) : {}; } catch { isJson = false; data = {}; }
+
+        // A web page (HTML) instead of JSON means a firewall/bot-check page or a wrong URL — not a real AI answer.
+        if (!isJson) {
+            const looksHtml = /<\s*(!doctype|html|meta|head|body|script)/i.test(raw);
+            const waf = /waf|captcha|challenge|cloudflare|aliyun/i.test(raw);
+            const snippet = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) || raw.slice(0, 300);
+            if (looksHtml) {
+                throw makeError(
+                    waf
+                        ? `AgentRouter's firewall returned a bot-check page (HTTP ${response.status}) instead of an AI answer. Requests from Netlify's servers are being blocked, or AGENTROUTER_API_URL is not the API endpoint.`
+                        : `AgentRouter returned a web page (HTTP ${response.status}) instead of API data. AGENTROUTER_API_URL is probably not the API endpoint.`,
+                    502,
+                    "URL: " + safeUrl(url) + " | Page text: " + snippet
+                );
+            }
+            data = { error: { message: raw.slice(0, 200) || `Empty response (${response.status})` } };
+        }
 
         if (response.ok) return data;
 
@@ -168,4 +187,5 @@ async function fetchWithRetry(url, options, retries = 2) {
 
 function safeUrl(u) {
     try { const x = new URL(u); return x.origin + x.pathname; } catch { return "(invalid AGENTROUTER_API_URL)"; }
-    }
+}
+    
